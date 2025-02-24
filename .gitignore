@@ -1,0 +1,4 @@
+.venv/
+*.csv
+mexico.json
+__pycache__/

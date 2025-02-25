@@ -14,6 +14,8 @@ def create_layout():
         dashboard_header(),
         create_upload_section(),
         dcc.Store(id='stored-clean-csv'),
+        dcc.Store(id='gps-datapoints'),
+        dcc.Store(id='general-statistics'),
         create_table_section('Días con Datos', 'tabla-dias'),
         create_table_section_for_days("Datos disponibles por día", "data-table", 'day-dropdown'),
         create_graph_section('Gráfico de Datos Nulos vs Existentes', 'grafico-columnas'),

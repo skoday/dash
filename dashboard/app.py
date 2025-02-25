@@ -19,30 +19,53 @@ def return_filename(contents, filename):
         return "Sube un archivo csv. Aegurate que tenga headers.\nPara llenar todos los campos se necesitan las etiquetas timestamp, latitude y longituude"
     return filename
 
-@app.callback(Output('stored-clean-csv', 'data'), Input('upload-data', 'contents'))
+# THis part will format timestamp if it exists
+@app.callback([Output('stored-clean-csv', 'data'),
+               Output('gps-datapoints', 'data')], Input('upload-data', 'contents'))
 def format_data(contents):
     if not contents:
-        return
+        return [], []
     df = process_file(contents)
     timestamp_col = find_timestamp(df.columns)
+    #df[timestamp_col] = pd.to_datetime(df[timestamp_col], errors='coerce')
     if timestamp_col:
         new_df = fix_timestamp(df, timestamp_col)
-        return new_df.to_dict('records')
-    return df.to_dict('records')
+        df = new_df
+
+    lon_col, lat_col = None, None
+    temp = find_coordinates(df.columns)
+    lon_col, lat_col = temp[0], temp[1]
+    if lon_col and lat_col:
+        final = remove_useless_gps_coordinates(df)
+        final.drop_duplicates(subset=[lon_col, lat_col], inplace=True)
+
+        return df.to_dict('records'), final.to_dict('records')
+
+    return df.to_dict('records'), dash.no_update
 
 # Show day with available data
-@app.callback(Output('tabla-dias', 'data'), Input('stored-clean-csv', 'data'), prevent_initial_call=True)
+@app.callback([Output('tabla-dias', 'data'),
+               Output('day-dropdown', 'options')], 
+              Input('stored-clean-csv', 'data'), 
+              prevent_initial_call=True)
 def days_table(contents):
     if not contents:
-        return
+        return [{"Día": "No se encontró timestamp"}], []
     df =  pd.DataFrame(contents)
     timestamp_col = find_timestamp(df.columns)
     if timestamp_col:
+        df[timestamp_col] = pd.to_datetime(df[timestamp_col], errors='coerce')
+    if timestamp_col:
         df['Date'] = pd.to_datetime(df[timestamp_col]).dt.date
         dias = [{'Día': str(dia)} for dia in df['Date'].unique()]
-        return dias
-    return [{"Día": "No se encontró timestamp"}]
 
+        #drop down menu
+        days = df[timestamp_col].dt.date.unique()
+
+
+        return dias, [{'label': str(day), 'value': str(day)} for day in days]
+    return [{"Día": "No se encontró timestamp"}], []
+"""
 # this section will display available data per days
 @app.callback(
     Output('day-dropdown', 'options'),
@@ -56,7 +79,7 @@ def update_dropdown(data):
     df[timestamp_col] = pd.to_datetime(df[timestamp_col])
     days = df[timestamp_col].dt.date.unique()
     return [{'label': str(day), 'value': str(day)} for day in days]
-
+"""
 @app.callback(
     Output('data-table', 'data'),
     Input('day-dropdown', 'value'),
@@ -176,7 +199,7 @@ def update_correlation_matrix(n_clicks, stored_data, selected_columns):
     return img_url
 
 @app.callback(Output('map-image', 'children'),
-              [Input('stored-clean-csv', 'data'),
+              [Input('gps-datapoints', 'data'),
                Input('map-filter-button', 'n_clicks')],
                [State('color-schemna', 'value'),
                 State('tags-in-map', 'value')]
@@ -191,13 +214,6 @@ def update_map(contents, n_clicks, colors, tags):
     lon_col, lat_col = None, None
     temp = find_coordinates(df.columns)
     lon_col, lat_col = temp[0], temp[1]
-
-    if lon_col is None or lat_col is None:
-        return "No se encontraron columnas de latitud/longitud en el CSV."
-    
-    final = remove_useless_gps_coordinates(df)
-    df = final
-    df.drop_duplicates(subset=[lon_col, lat_col], inplace=True)
     fig = None
 
     if not colors and not tags:
@@ -257,4 +273,4 @@ app.layout = create_layout()
 
 
 if __name__ == '__main__':
-    app.run_server(host="0.0.0.0", port=8050, debug=True)
+    app.run_server(host="0.0.0.0", port=8050, debug=True, threaded=True)

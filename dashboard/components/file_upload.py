@@ -18,7 +18,7 @@ def create_upload_section():
                     'font-size': '16px'
                 }
             ),
-            multiple=False,
+            multiple=True,
             style={
                 'text-align': 'center',
                 'padding': '20px',

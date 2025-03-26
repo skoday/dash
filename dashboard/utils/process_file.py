@@ -11,33 +11,40 @@ def is_data_row(row):
     )
     return data_count >= len(row) * 0.7  # If at least 70% of the row is numeric, treat it as data
 
-def process_file(contents):
-    content_type, content_string = contents.split(',')
-    decoded = base64.b64decode(content_string)
-    decoded = io.StringIO(decoded.decode('latin1'))
+def process_file(contents_list):
+    """Process multiple CSV files from a list of base64-encoded contents."""
+    dataframes = []  # Store processed DataFrames
 
-    # Read the first row to determine if it's a header or data
-    first_row = pd.read_csv(decoded, nrows=1, header=None)
-    print("First row preview:\n", first_row)
+    for contents in contents_list:
+        _, content_string = contents.split(',')
+        decoded = base64.b64decode(content_string)
+        decoded = io.StringIO(decoded.decode('latin1'))
 
-    decoded.seek(0)  # Reset pointer for full read
+        # Read the first row to determine if it's a header or data
+        first_row = pd.read_csv(decoded, nrows=1, header=None)
+        decoded.seek(0)  # Reset pointer for full read
 
-    if is_data_row(first_row.iloc[0]):
-        print("This file does NOT contain column names")
-        columns = [
-            "Timestamp", "Unix Time", "RTC Temp", "GPS UTC Time", "GPS Date", "GPS Latitude",
-            "GPS Longitude", "GPS Altitude", "GPS Satellites", "GPS HDOP", "GPS Speed (Knots)",
-            "GPS Speed (Km/h)", "GPS Track Degrees", "CycleID", "Hash", "SPS30 mc 1.0", "SPS30 mc 2.5",
-            "SPS30 mc 4.0", "SPS30 mc 10.0", "SPS30 nc 0.5", "SPS30 nc 1.0", "SPS30 nc 2.5",
-            "SPS30 nc 4.0", "SPS30 nc 10.0", "SPS30 Particle Size", "AHT20 Temperature", "AHT20 Humidity",
-            "BMP280 Temperature", "BMP280 Pressure", "BMP280 Altitude"
-        ]
-        df = pd.read_csv(decoded, header=None, names=columns)
-    else:
-        print("This file contains column names")
-        df = pd.read_csv(decoded)
+        if is_data_row(first_row.iloc[0]):
+            print("This file does NOT contain column names")
+            columns = [
+                "Timestamp", "Unix Time", "RTC Temp", "GPS UTC Time", "GPS Date", "GPS Latitude",
+                "GPS Longitude", "GPS Altitude", "GPS Satellites", "GPS HDOP", "GPS Speed (Knots)",
+                "GPS Speed (Km/h)", "GPS Track Degrees", "CycleID", "Hash", "SPS30 mc 1.0", "SPS30 mc 2.5",
+                "SPS30 mc 4.0", "SPS30 mc 10.0", "SPS30 nc 0.5", "SPS30 nc 1.0", "SPS30 nc 2.5",
+                "SPS30 nc 4.0", "SPS30 nc 10.0", "SPS30 Particle Size", "AHT20 Temperature", "AHT20 Humidity",
+                "BMP280 Temperature", "BMP280 Pressure", "BMP280 Altitude"
+            ]
+            df = pd.read_csv(decoded, header=None, names=columns)
+        else:
+            print("This file contains column names")
+            df = pd.read_csv(decoded)
 
-    return df
+        dataframes.append(df)  # Store each DataFrame
+
+    # Concatenate all DataFrames into one
+    merged_df = pd.concat(dataframes, ignore_index=True)
+
+    return merged_df
 
 def find_timestamp(columns):    
     timestamp = None

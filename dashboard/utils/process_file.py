@@ -3,10 +3,40 @@ import io
 import pandas as pd
 import geopandas as gpd
 
+def is_data_row(row):
+    """Determine if a row looks like actual data instead of headers."""
+    data_count = sum(
+        str(val).replace('.', '', 1).isdigit() or isinstance(val, (int, float))
+        for val in row
+    )
+    return data_count >= len(row) * 0.7  # If at least 70% of the row is numeric, treat it as data
+
 def process_file(contents):
     content_type, content_string = contents.split(',')
     decoded = base64.b64decode(content_string)
-    df = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
+    decoded = io.StringIO(decoded.decode('latin1'))
+
+    # Read the first row to determine if it's a header or data
+    first_row = pd.read_csv(decoded, nrows=1, header=None)
+    print("First row preview:\n", first_row)
+
+    decoded.seek(0)  # Reset pointer for full read
+
+    if is_data_row(first_row.iloc[0]):
+        print("This file does NOT contain column names")
+        columns = [
+            "Timestamp", "Unix Time", "RTC Temp", "GPS UTC Time", "GPS Date", "GPS Latitude",
+            "GPS Longitude", "GPS Altitude", "GPS Satellites", "GPS HDOP", "GPS Speed (Knots)",
+            "GPS Speed (Km/h)", "GPS Track Degrees", "CycleID", "Hash", "SPS30 mc 1.0", "SPS30 mc 2.5",
+            "SPS30 mc 4.0", "SPS30 mc 10.0", "SPS30 nc 0.5", "SPS30 nc 1.0", "SPS30 nc 2.5",
+            "SPS30 nc 4.0", "SPS30 nc 10.0", "SPS30 Particle Size", "AHT20 Temperature", "AHT20 Humidity",
+            "BMP280 Temperature", "BMP280 Pressure", "BMP280 Altitude"
+        ]
+        df = pd.read_csv(decoded, header=None, names=columns)
+    else:
+        print("This file contains column names")
+        df = pd.read_csv(decoded)
+
     return df
 
 def find_timestamp(columns):    
@@ -45,8 +75,8 @@ def fix_timestamp(df, timestamp_column_name):
     
     return dft
 
-def remove_useless_gps_coordinates(df, threshold = 10):
-        gps_data_clean = df.dropna(subset=["GPS_Latitude", "GPS_Longitude"])
+def remove_useless_gps_coordinates(df, lat_col, lon_col, threshold = 10):
+        gps_data_clean = df.dropna(subset=[lat_col, lon_col])
 
         # 2. Load Mexico GeoJSON (or via API)
         # Replace 'path_to_mexico_geojson' with the actual path or URL to the GeoJSON file
@@ -56,7 +86,7 @@ def remove_useless_gps_coordinates(df, threshold = 10):
         # Convert gps_data_clean to a GeoDataFrame
         gdf_points = gpd.GeoDataFrame(
             gps_data_clean,
-            geometry=gpd.points_from_xy(gps_data_clean["GPS_Longitude"], gps_data_clean["GPS_Latitude"]),
+            geometry=gpd.points_from_xy(gps_data_clean[lon_col], gps_data_clean[lat_col]),
             crs="EPSG:4326"  # WGS84 coordinate system
         )
 

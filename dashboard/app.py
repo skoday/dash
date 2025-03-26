@@ -36,7 +36,7 @@ def format_data(contents):
     temp = find_coordinates(df.columns)
     lon_col, lat_col = temp[0], temp[1]
     if lon_col and lat_col:
-        final = remove_useless_gps_coordinates(df)
+        final = remove_useless_gps_coordinates(df, lat_col, lon_col)
         final.drop_duplicates(subset=[lon_col, lat_col], inplace=True)
 
         return df.to_dict('records'), final.to_dict('records')

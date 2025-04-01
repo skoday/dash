@@ -34,7 +34,8 @@ def process_file(contents_list):
                 "SPS30 nc 4.0", "SPS30 nc 10.0", "SPS30 Particle Size", "AHT20 Temperature", "AHT20 Humidity",
                 "BMP280 Temperature", "BMP280 Pressure", "BMP280 Altitude"
             ]
-            df = pd.read_csv(decoded, header=None, names=columns, index_col=False, usecols=range(len(columns)))
+            df = pd.read_csv(decoded, header=None, names=columns, index_col=False, usecols=range(len(columns)), engine='python', encoding='latin1', sep=",", on_bad_lines='skip')
+            df.to_csv("lastima.csv", index=False)
         else:
             print("This file contains column names")
             df = pd.read_csv(decoded)

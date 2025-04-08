@@ -9,6 +9,8 @@ import base64
 from io import BytesIO
 import plotly.express as px
 from dash import dcc
+from  utils.data_processing import DataProcessing
+import io
 
 app = dash.Dash(__name__)
 
@@ -22,24 +24,23 @@ def return_filename(contents, filename):
 # THis part will format timestamp if it exists
 @app.callback([Output('stored-clean-csv', 'data'),
                Output('gps-datapoints', 'data')], Input('upload-data', 'contents'))
-def format_data(contents):
-    if not contents:
+def format_data(contents_list):
+    if not contents_list:
         return [], []
-    df = process_file(contents)
-    timestamp_col = find_timestamp(df.columns)
-    #df[timestamp_col] = pd.to_datetime(df[timestamp_col], errors='coerce')
-    if timestamp_col:
-        new_df = fix_timestamp(df, timestamp_col)
-        df = new_df
+    
+    content_list = []
 
-    lon_col, lat_col = None, None
-    temp = find_coordinates(df.columns)
-    lon_col, lat_col = temp[0], temp[1]
-    if lon_col and lat_col:
-        final = remove_useless_gps_coordinates(df, lat_col, lon_col)
-        final.drop_duplicates(subset=[lon_col, lat_col], inplace=True)
+    for contents in contents_list:
+        _, content_string = contents.split(',')
+        decoded = base64.b64decode(content_string)
+        decoded = io.StringIO(decoded.decode('latin1'))
+        content_list.append(decoded)
 
-        return df.to_dict('records'), final.to_dict('records')
+    pipeline = DataProcessing(objects=content_list, is_object=True)
+    pipeline.read_files()
+    pipeline.process_data()
+    df = pipeline.get_final_csv()
+
 
     return df.to_dict('records'), dash.no_update
 

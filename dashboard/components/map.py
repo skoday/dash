@@ -3,6 +3,7 @@ from dash import html, dcc
 def create_map_section():
     return html.Div([
         html.H2('Mapa de puntos', style={'text-align': 'center', 'color': '#333', 'font-size': '24px'}),
+        html.Div(id='map-image'),
         html.Div(children="Selecciona campo a usar como referencia para la escala de colores", style={'marginTop': '20px', 'text-align': 'center', 'color': '#555'}),
         dcc.RadioItems(
             id='color-schemna',
@@ -20,8 +21,7 @@ def create_map_section():
         html.Button('Añadir filtro', id='map-filter-button', style={
             'background-color': '#007BFF', 'color': 'white', 'border': 'none', 'border-radius': '5px',
             'padding': '10px 20px', 'cursor': 'pointer', 'font-size': '16px', 'margin-top': '15px'
-        }),
-        html.Div(id='map-image')
+        })
     ], style={
         'padding': '20px',
         'border': '1px solid #ccc',

@@ -41,6 +41,10 @@ def format_data(contents_list):
     pipeline.process_data()
     df = pipeline.get_final_csv()
 
+    coordinates = pipeline.find_coordinates()
+    if coordinates:
+        temp = df.dropna(subset=[coordinates[0], coordinates[1]])
+        return df.to_dict('records'), temp.to_dict('records')
 
     return df.to_dict('records'), dash.no_update
 
@@ -66,21 +70,8 @@ def days_table(contents):
 
         return dias, [{'label': str(day), 'value': str(day)} for day in days]
     return [{"Día": "No se encontró timestamp"}], []
-"""
-# this section will display available data per days
-@app.callback(
-    Output('day-dropdown', 'options'),
-    Input('stored-clean-csv', 'data')
-)
-def update_dropdown(data):
-    if not data:
-        return []
-    df = pd.DataFrame(data)
-    timestamp_col = find_timestamp(df.columns)
-    df[timestamp_col] = pd.to_datetime(df[timestamp_col])
-    days = df[timestamp_col].dt.date.unique()
-    return [{'label': str(day), 'value': str(day)} for day in days]
-"""
+
+
 @app.callback(
     Output('data-table', 'data'),
     Input('day-dropdown', 'value'),

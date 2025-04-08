@@ -16,13 +16,13 @@ def create_layout():
         dcc.Store(id='stored-clean-csv'),
         dcc.Store(id='gps-datapoints'),
         dcc.Store(id='general-statistics'),
+        create_map_section(),
         create_table_section('Días con Datos', 'tabla-dias'),
         create_table_section_for_days("Datos disponibles por día", "data-table", 'day-dropdown'),
         create_graph_section('Gráfico de Datos Nulos vs Existentes', 'grafico-columnas'),
         create_table_section('Detalles por Columna', 'tabla-columnas'),
         create_table_section('Tipos de Dato por Columna', 'tabla-tipos-dato'),
         create_stats_section(),
-        create_correlation_section(),
-        create_map_section()
+        create_correlation_section()
     ])
 

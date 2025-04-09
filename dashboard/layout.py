@@ -20,8 +20,19 @@ def create_layout():
         create_table_section('Días con Datos', 'tabla-dias'),
         create_table_section_for_days("Datos disponibles por día", "data-table", 'day-dropdown'),
         create_graph_section('Gráfico de Datos Nulos vs Existentes', 'grafico-columnas'),
-        create_table_section('Detalles por Columna', 'tabla-columnas'),
-        create_table_section('Tipos de Dato por Columna', 'tabla-tipos-dato'),
+        
+        html.Div(
+                children=[
+                    # Fila 1: 3 elementos en línea
+                    html.Div(
+                        children=[
+                            create_table_section('Detalles por Columna', 'tabla-columnas'),
+                            create_table_section('Tipos de Dato por Columna', 'tabla-tipos-dato'),
+                        ],
+                        style={"display": "flex", "flexDirection": "row"}
+                    )
+                ]
+            ),
         create_stats_section(),
         create_correlation_section()
     ])

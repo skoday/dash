@@ -36,6 +36,7 @@ def create_table_section(title, table_id):
             ]
         )
     ], style={
+        "flex": "1",
         'padding': '20px',
         'border': '1px solid #ccc',
         'border-radius': '10px',

@@ -10,6 +10,7 @@ from io import BytesIO
 import plotly.express as px
 from dash import dcc
 from  utils.data_processing import DataProcessing
+from dash import html
 import io
 
 app = dash.Dash(__name__)
@@ -90,15 +91,28 @@ def update_graph(selected_day, data):
         name='Cantidad de registros')
     hourly_counts.rename(columns={timestamp_col: 'Hora'}, inplace=True)
 
+    # Crear el gráfico con tema oscuro
     fig = px.bar(
         hourly_counts,
         x='Hora',
         y='Cantidad de registros',
         labels={'Hora': 'Hora del día', 'Cantidad de registros': 'Cantidad'},
-        template='plotly_white'
+        template='plotly_dark'  # Usamos el tema oscuro
     )
-    fig.update_layout(margin=dict(t=40, b=20, l=10, r=10))
+
+    # Actualizamos el diseño del gráfico para que se vea bien en el modo oscuro
+    fig.update_layout(
+        margin=dict(t=40, b=20, l=10, r=10),
+        plot_bgcolor='#2b2b2b',  # Fondo oscuro para el gráfico
+        paper_bgcolor='#1e1e1e',  # Fondo oscuro para el área del gráfico
+        font=dict(color='#f5f5f5'),  # Texto blanco
+        xaxis=dict(tickangle=45, tickcolor='#f5f5f5'),  # Ticks y ejes en color blanco
+        yaxis=dict(tickcolor='#f5f5f5'),  # Ticks del eje Y en color blanco
+        title=dict(font=dict(color='#f5f5f5'))  # Título blanco
+    )
+
     return fig
+
 
 
 @app.callback([Output('grafico-columnas', 'figure'),
@@ -120,16 +134,32 @@ def day_graph_existing_values_data_type(data):
     
     fig = {
         'data': [
-            {'x': list(columns), 'y': list(null_data), 'type': 'bar', 'name': 'Datos Nulos', 'marker': {'color': 'red'}},
-            {'x': list(columns), 'y': list(available_data), 'type': 'bar', 'name': 'Datos Existentes', 'marker': {'color': 'blue'}}
+            {
+                'x': list(columns),
+                'y': list(null_data),
+                'type': 'bar',
+                'name': 'Datos Nulos',
+                'marker': {'color': 'red'}
+            },
+            {
+                'x': list(columns),
+                'y': list(available_data),
+                'type': 'bar',
+                'name': 'Datos Existentes',
+                'marker': {'color': 'blue'}
+            }
         ],
         'layout': {
             'barmode': 'group',
             'title': "Datos Nulos vs Datos Existentes por Columna",
             'xaxis': {'title': 'Columnas'},
-            'yaxis': {'title': 'Cantidad de Datos'}
+            'yaxis': {'title': 'Cantidad de Datos'},
+            'plot_bgcolor': '#1e1e1e',
+            'paper_bgcolor': '#1e1e1e',
+            'font': {'color': '#f5f5f5'}
         }
     }
+
     
     table = [{'Columna': col, 'Datos Nulos': null_data[col], 'Datos Existentes': available_data[col]} for col in columns]
 
@@ -232,7 +262,18 @@ def update_correlation_matrix(n_clicks, stored_data, selected_columns):
                )
 def update_map(contents, n_clicks, colors, tags):
     if not contents:
-        return "Sube un archivo CSV para ver el mapa."
+        return html.Div(
+            "Sube un archivo CSV para ver el mapa.",
+            style={
+                'text-align': 'center',
+                'color': '#ccc',
+                'font-size': '16px',
+                'padding': '20px',
+                'background-color': '#333',
+                'border-radius': '10px',
+                'box-shadow': '2px 2px 10px rgba(0,0,0,0.3)',
+            }
+        )
     
     df = pd.DataFrame(contents)
     
@@ -242,6 +283,7 @@ def update_map(contents, n_clicks, colors, tags):
     lon_col, lat_col = temp[0], temp[1]
     fig = None
 
+    # Generación de gráficos según condiciones
     if not colors and not tags:
         fig = px.scatter_map(
             df,
@@ -259,11 +301,11 @@ def update_map(contents, n_clicks, colors, tags):
             lat=lat_col,
             lon=lon_col,
             color=colors,
-            #size = colors,
             color_continuous_scale=px.colors.sequential.Bluered,
             zoom=3,
             size_max=10,
-            height=800
+            height=800,
+            map_style='dark'
         )
 
     if tags and not colors:
@@ -274,26 +316,43 @@ def update_map(contents, n_clicks, colors, tags):
                 hover_data=tags,
                 zoom=3,
                 height=800,
-                size_max=15
+                size_max=15,
+                map_style='dark'
             )
     
-    # Condición de 'tags' no vacío
+    # Condición de 'tags' y 'colors' no vacío
     if tags and colors:
         fig = px.scatter_map(
             df,
             lat=lat_col,
             lon=lon_col,
             color=colors,
-            #size = colors,
             color_continuous_scale=px.colors.sequential.Bluered,
             hover_data=tags,
             size_max=10,
             zoom=3,
-            height=800
+            height=800,
+            map_style='dark'
         )
 
-    
-    return dcc.Graph(figure=fig)
+    # Aquí agregamos estilos para el gráfico
+    fig.update_layout(
+        plot_bgcolor="#121212",  # Fondo oscuro
+        paper_bgcolor="#121212",  # Fondo de la zona del gráfico
+        font=dict(color="#f5f5f5"),  # Texto en blanco
+        geo=dict(bgcolor="#121212", lakecolor="#121212"),  # Fondo del mapa en oscuro
+        margin=dict(l=10, r=10, t=10, b=10),  # Márgenes pequeños para no perder espacio
+    )
+    return dcc.Graph(
+        figure=fig,
+        style={
+            'border-radius': '10px',
+            'box-shadow': '2px 2px 10px rgba(0,0,0,0.3)',  # Sombra discreta para mantenerlo elegante
+            'height': '800px',  # Altura para que no quede comprimido
+            'background-color': '#1e1e1e',  # Fondo suave oscuro
+        }
+    )
+
 
 @app.callback(
     Output('download-data', 'data'),
@@ -307,8 +366,92 @@ def trigger_download(n_clicks, data):
     
     return dcc.send_data_frame(df.to_csv, filename="mis_datos.csv", index=False)
 
+@app.callback(
+        Output('timeseries-dropdown', 'options'),
+        Input('stored-clean-csv', 'data')
+    )
+def fill_dropdown_options(data):
+    if not data:
+        return []
+    df = pd.DataFrame(data)
+    columnas_numericas = df.select_dtypes(include=['number']).columns.tolist()
+    columnas_filtradas = [
+            col for col in columnas_numericas
+            if not any(substring in col.lower() for substring in ["lat", "lon", "time"])
+            ]
+    return [{'label': col, 'value': col} for col in columnas_filtradas]
 
-app.layout = create_layout()
+@app.callback(
+    Output('timeseries-plot', 'figure'),
+    Input('timeseries-dropdown', 'value'),
+    State('stored-clean-csv', 'data')
+)
+def update_plot(selected_column, data):
+    if not selected_column or not data:
+        return {}
+
+    df = pd.DataFrame(data)
+
+    # Buscar timestamp si existe
+    timestamp_col = find_timestamp(df.columns)
+    if timestamp_col:
+        df[timestamp_col] = pd.to_datetime(df[timestamp_col])
+        x = df[timestamp_col]
+    else:
+        x = df.index
+
+    # Crear figura
+    fig = px.scatter(
+        df, x=x, y=selected_column,
+        labels={'x': 'Tiempo', selected_column: 'Valor'},
+        title=f'Serie de tiempo: {selected_column}'
+    )
+
+    # Estilo del gráfico
+    fig.update_traces(marker=dict(color="#007bff", size=7))  # Ajustar tamaño de los puntos
+    fig.update_layout(
+        margin={"l": 40, "r": 20, "t": 40, "b": 40},  # Ajustar márgenes
+        plot_bgcolor="#1e1e1e",  # Fondo oscuro
+        paper_bgcolor="#1e1e1e",  # Fondo del papel oscuro
+        font=dict(family="Segoe UI, sans-serif", color="#f5f5f5"),  # Fuente blanca y legible
+        title_font=dict(family="Segoe UI, sans-serif", size=18, color="#f5f5f5"),  # Título en blanco
+        xaxis=dict(
+            title="Tiempo",
+            showgrid=True,  # Mostrar las líneas de la cuadrícula
+            gridcolor="#444",  # Color gris oscuro de la cuadrícula
+            zeroline=False  # No mostrar la línea en cero
+        ),
+        yaxis=dict(
+            title="Valor",
+            showgrid=True,  # Mostrar las líneas de la cuadrícula
+            gridcolor="#444",  # Color gris oscuro de la cuadrícula
+            zeroline=False  # No mostrar la línea en cero
+        ),
+    )
+    return fig
+
+
+#app.layout = create_layout()
+
+app.layout = html.Div(
+                        children=[
+                            create_layout(),
+                            html.Div(
+                                [
+                                    # tus secciones y componentes aquí
+                                ]
+                            )
+                        ],
+                        style={
+                            'backgroundColor': '#121212',
+                            'minHeight': '100vh',
+                            'padding': '0',
+                            'margin': '0',
+                            'color': '#f5f5f5',
+                            'font-family': 'Segoe UI, sans-serif'
+                        }
+                    )
+
 
 
 if __name__ == '__main__':

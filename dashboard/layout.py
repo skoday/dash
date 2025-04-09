@@ -9,6 +9,7 @@ from components.corr_section import create_correlation_section
 from components.map import create_map_section
 from components.records_hours import create_hourly_graph_section
 from components.download_file import create_download_section
+from components.time_series import create_timeseries_section
 
 def create_layout():
     return html.Div([
@@ -39,6 +40,7 @@ def create_layout():
         dcc.Store(id='general-statistics'),
         create_graph_section('Gráfico de Datos Nulos vs Existentes', 'grafico-columnas'),
         create_map_section(),
+        create_timeseries_section(),
         html.Div(
             children=[
                 html.Div(

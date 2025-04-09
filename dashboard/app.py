@@ -261,6 +261,19 @@ def update_map(contents, n_clicks, colors, tags):
     
     return dcc.Graph(figure=fig)
 
+@app.callback(
+    Output('download-data', 'data'),
+    Input('download-btn', 'n_clicks'),
+    State('stored-clean-csv', 'data')
+)
+def trigger_download(n_clicks, data):
+    if not data:
+        return dash.no_update
+    df = pd.DataFrame(data)
+    
+    return dcc.send_data_frame(df.to_csv, filename="mis_datos.csv", index=False)
+
+
 app.layout = create_layout()
 
 

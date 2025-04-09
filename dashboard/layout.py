@@ -8,11 +8,32 @@ from components.stats_section import create_stats_section
 from components.corr_section import create_correlation_section
 from components.map import create_map_section
 from components.records_hours import create_table_section_for_days
+from components.download_file import create_download_section
 
 def create_layout():
     return html.Div([
         dashboard_header(),
-        create_upload_section(),
+        html.Div(
+            children=[
+                # CONTENEDOR QUE LIMITA EL ANCHO TOTAL
+                html.Div(
+                    children=[
+                        html.Div(
+                            children=[
+                                create_upload_section(),
+                                create_download_section()
+                            ],
+                            style={"display": "flex", "flexDirection": "row", "gap": "20px"}  # opcional: gap para separar
+                        )
+                    ],
+                    style={
+                        "margin": "0 auto",   # centra horizontalmente
+                        "padding": "20px"     # opcional: margen interno
+                    }
+                )
+            ]
+        ),
+
         dcc.Store(id='stored-clean-csv'),
         dcc.Store(id='gps-datapoints'),
         dcc.Store(id='general-statistics'),

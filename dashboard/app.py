@@ -73,20 +73,32 @@ def days_table(contents):
 
 
 @app.callback(
-    Output('data-table', 'data'),
+    Output("hourly-graph", 'figure'),
     Input('day-dropdown', 'value'),
     State('stored-clean-csv', 'data')
 )
-def update_table(selected_day, data):
+def update_graph(selected_day, data):
     if not data or not selected_day:
-        return []
+        return px.bar(title="No hay datos para mostrar")
+
     df = pd.DataFrame(data)
     timestamp_col = find_timestamp(df.columns)
     df[timestamp_col] = pd.to_datetime(df[timestamp_col])
+
     df_filtered = df[df[timestamp_col].dt.date.astype(str) == selected_day]
-    hourly_counts = df_filtered.groupby(df_filtered[timestamp_col].dt.hour).size().reset_index(name='Cantidad de registros')
+    hourly_counts = df_filtered.groupby(df_filtered[timestamp_col].dt.hour).size().reset_index(
+        name='Cantidad de registros')
     hourly_counts.rename(columns={timestamp_col: 'Hora'}, inplace=True)
-    return hourly_counts.to_dict('records')
+
+    fig = px.bar(
+        hourly_counts,
+        x='Hora',
+        y='Cantidad de registros',
+        labels={'Hora': 'Hora del día', 'Cantidad de registros': 'Cantidad'},
+        template='plotly_white'
+    )
+    fig.update_layout(margin=dict(t=40, b=20, l=10, r=10))
+    return fig
 
 
 @app.callback([Output('grafico-columnas', 'figure'),
@@ -140,27 +152,49 @@ def day_graph_existing_values_data_type(data):
 
 @app.callback(
     Output('tabla-estadisticas', 'data'),
-    [Input('show-stats-button', 'n_clicks')],
+    [Input('show-stats-button', 'n_clicks'),
+     Input('stored-clean-csv', 'data')],
     [State('stored-clean-csv', 'data'),
      State('numeric-columns-checklist', 'value')]
 )
-def mostrar_estadisticas(n_clicks, stored_data, selected_columns):
-    if not n_clicks or stored_data is None or not selected_columns:
+def mostrar_estadisticas(n_clicks,stored_data1, stored_data, selected_columns):
+    if not stored_data1:
         return []
-    df = pd.DataFrame(stored_data)
-    stats = df[selected_columns].describe().transpose()
-    tabla_estadisticas = [{
-        'Columna': index,
-        'No de registros': stats.loc[index, 'count'],
-        'Promedio': stats.loc[index, 'mean'],
-        'Desviación Estándar': stats.loc[index, 'std'],
-        'Mínimo': stats.loc[index, 'min'],
-        '25%': stats.loc[index, '25%'],
-        'Mediana (50%)': stats.loc[index, '50%'],
-        '75%': stats.loc[index, '75%'],
-        'Máximo': stats.loc[index, 'max']
-    } for index in stats.index]
-    return tabla_estadisticas
+    if stored_data1 and not selected_columns:
+        df = pd.DataFrame(stored_data)
+        columnas_numericas = df.select_dtypes(include=['number']).columns.tolist()
+        columnas_filtradas = [
+            col for col in columnas_numericas
+            if not any(substring in col.lower() for substring in ["lat", "lon", "time"])
+            ]
+        stats = df[columnas_filtradas].describe().transpose()
+        tabla_estadisticas = [{
+            'Columna': index,
+            'No de registros': stats.loc[index, 'count'],
+            'Promedio': stats.loc[index, 'mean'],
+            'Desviación Estándar': stats.loc[index, 'std'],
+            'Mínimo': stats.loc[index, 'min'],
+            '25%': stats.loc[index, '25%'],
+            'Mediana (50%)': stats.loc[index, '50%'],
+            '75%': stats.loc[index, '75%'],
+            'Máximo': stats.loc[index, 'max']
+        } for index in stats.index]
+        return tabla_estadisticas
+    else:
+        df = pd.DataFrame(stored_data)
+        stats = df[selected_columns].describe().transpose()
+        tabla_estadisticas = [{
+            'Columna': index,
+            'No de registros': stats.loc[index, 'count'],
+            'Promedio': stats.loc[index, 'mean'],
+            'Desviación Estándar': stats.loc[index, 'std'],
+            'Mínimo': stats.loc[index, 'min'],
+            '25%': stats.loc[index, '25%'],
+            'Mediana (50%)': stats.loc[index, '50%'],
+            '75%': stats.loc[index, '75%'],
+            'Máximo': stats.loc[index, 'max']
+        } for index in stats.index]
+        return tabla_estadisticas
 
 def generate_correlation_matrix(df):
     """Genera una imagen de la matriz de correlación y devuelve la URL en base64"""

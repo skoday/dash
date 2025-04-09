@@ -7,7 +7,7 @@ from components.existing_data_graph import create_graph_section
 from components.stats_section import create_stats_section
 from components.corr_section import create_correlation_section
 from components.map import create_map_section
-from components.records_hours import create_table_section_for_days
+from components.records_hours import create_hourly_graph_section
 from components.download_file import create_download_section
 
 def create_layout():
@@ -37,10 +37,27 @@ def create_layout():
         dcc.Store(id='stored-clean-csv'),
         dcc.Store(id='gps-datapoints'),
         dcc.Store(id='general-statistics'),
-        create_map_section(),
-        create_table_section('Días con Datos', 'tabla-dias'),
-        create_table_section_for_days("Datos disponibles por día", "data-table", 'day-dropdown'),
         create_graph_section('Gráfico de Datos Nulos vs Existentes', 'grafico-columnas'),
+        create_map_section(),
+        html.Div(
+            children=[
+                html.Div(
+                    children=create_table_section('Días con Datos', 'tabla-dias'),
+                    style={'flex': '1'}
+                ),
+                html.Div(
+                    children=create_hourly_graph_section("Datos disponibles por día", "hourly-graph", 'day-dropdown'),
+                    style={'flex': '2'}
+                )
+            ],
+            style={
+                'display': 'flex',
+                'flexDirection': 'row',
+                'gap': '20px',  # Espacio entre columnas (opcional)
+                'margin': '20px 0'  # Margen vertical (opcional)
+            }
+        ),
+
         
         html.Div(
                 children=[

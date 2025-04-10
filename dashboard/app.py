@@ -12,6 +12,7 @@ from dash import dcc
 from  utils.data_processing import DataProcessing
 from dash import html
 import io
+from multiprocessing import Pool, cpu_count
 
 app = dash.Dash(__name__)
 
@@ -21,6 +22,14 @@ def return_filename(contents, filename):
     if not contents:
         return "Sube un archivo csv. Aegurate que tenga headers.\nPara llenar todos los campos se necesitan las etiquetas timestamp, latitude y longituude"
     return filename
+
+def helper(content_list):
+    print("tipo: ", type(content_list))
+    pipeline = DataProcessing(objects=[content_list], is_object=True)
+    pipeline.read_files()
+    pipeline.process_data()
+    return pipeline.get_final_csv()
+    
 
 # THis part will format timestamp if it exists
 @app.callback([Output('stored-clean-csv', 'data'),
@@ -36,13 +45,16 @@ def format_data(contents_list):
         decoded = base64.b64decode(content_string)
         decoded = io.StringIO(decoded.decode('latin1'))
         content_list.append(decoded)
-
-    pipeline = DataProcessing(objects=content_list, is_object=True)
-    pipeline.read_files()
-    pipeline.process_data()
-    df = pipeline.get_final_csv()
-
-    coordinates = pipeline.find_coordinates()
+    print("tipogeneral: ", type(content_list), " type elements: ", type(content_list[0]))
+    with Pool(cpu_count()) as pool:
+        df_list = pool.map(helper, content_list)
+    
+    # Combine all the dataframes
+    df = pd.concat(df_list, ignore_index=True)
+    
+    # Assuming find_coordinates is a function you've defined elsewhere
+    # If not, you'll need to adapt this part
+    coordinates = find_coordinates(df.columns)
     if coordinates:
         temp = df.dropna(subset=[coordinates[0], coordinates[1]])
         return df.to_dict('records'), temp.to_dict('records')

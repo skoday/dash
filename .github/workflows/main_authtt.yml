@@ -23,7 +23,7 @@ jobs:
       run: docker build . --file Dockerfile --tag ttimagesregistry.azurecr.io/dashservice:${{ env.TAG }}
 
     - name: log into my repository
-      run: docker login ttimagesregistry.azurecr.io -u ${{ secrets.USERNAME }} -p ${{ secrets.PASSWORD }}
+      run: echo ${{ secrets.PASSWORD }} | docker login ttimagesregistry.azurecr.io -u ${{ secrets.USERNAME }} --password-stdin
       
     - name: push step
       run: docker push ttimagesregistry.azurecr.io/dashservice:${{ env.TAG }}

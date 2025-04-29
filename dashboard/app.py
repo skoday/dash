@@ -13,6 +13,9 @@ from  utils.data_processing import DataProcessing
 from dash import html
 import io
 from multiprocessing import Pool, cpu_count
+import numpy as np
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
 
 app = dash.Dash(__name__)
 
@@ -303,7 +306,8 @@ def update_map(contents, n_clicks, colors, tags):
             lon=lon_col,
             zoom=3,
             height=800,
-            size_max=15
+            size_max=15,
+            map_style='streets'
         )
 
     # Condición de 'colors' no vacío
@@ -317,7 +321,7 @@ def update_map(contents, n_clicks, colors, tags):
             zoom=3,
             size_max=10,
             height=800,
-            map_style='dark'
+            map_style='streets'
         )
 
     if tags and not colors:
@@ -329,7 +333,7 @@ def update_map(contents, n_clicks, colors, tags):
                 zoom=3,
                 height=800,
                 size_max=15,
-                map_style='dark'
+                map_style='streets'
             )
     
     # Condición de 'tags' y 'colors' no vacío
@@ -344,7 +348,7 @@ def update_map(contents, n_clicks, colors, tags):
             size_max=10,
             zoom=3,
             height=800,
-            map_style='dark'
+            map_style='streets'
         )
 
     # Aquí agregamos estilos para el gráfico
@@ -463,29 +467,74 @@ def update_numeric_column_options(data):
     Input('decade-column-dropdown', 'value'),
     State('stored-clean-csv', 'data')
 )
-def update_decade_distribution(selected_column, data):
+def update_distribution_visualization(selected_column, data):
     if not data or not selected_column:
         return px.bar(title="No hay datos para mostrar")
 
     df = pd.DataFrame(data)
     df = df[[selected_column]].dropna()
-    df['decena'] = (df[selected_column] // 10).astype(int)
-
-    counts = df['decena'].value_counts().sort_index()
-    df_counts = counts.reset_index()
-    df_counts.columns = ['Decena', 'Cantidad']
-    print(df_counts)
-    fig = px.bar(
-        df_counts,
-        x='Decena',
-        y='Cantidad',
-        labels={'Decena': 'Decena (x10)', 'Cantidad': 'Cantidad de valores'},
+    
+    # Convertimos a numérico
+    df[selected_column] = pd.to_numeric(df[selected_column], errors='coerce')
+    df = df.dropna()
+    
+    # Calculamos estadísticas básicas para determinar rangos apropiados
+    min_val = df[selected_column].min()
+    max_val = df[selected_column].max()
+    
+    # Elegir número de bins apropiado basado en la regla de Sturges
+    n_bins = int(np.ceil(np.log2(len(df))) + 1)
+    
+    # Crear histograma con bins adaptados y mejor visualización
+    fig = px.histogram(
+        df, 
+        x=selected_column,
+        nbins=n_bins,  # Bins adaptados a los datos
+        labels={selected_column: 'Valor', 'count': 'Frecuencia'},
         template='plotly_dark',
-        #color='Cantidad',
-        color_continuous_scale='Blues'
+        marginal='box',  # Añade un box plot en el margen para ver la distribución
+        opacity=0.7,
+        color_discrete_sequence=['#2EA5D1']  # Color más atractivo
     )
-    fig.update_layout(margin=dict(t=40, b=20, l=10, r=10))
-
+    
+    # Mejoramos la presentación
+    fig.update_layout(
+        margin=dict(t=50, b=30, l=40, r=40),
+        title=f"Distribución de {selected_column}",
+        xaxis_title=f"Valores de {selected_column}",
+        yaxis_title="Frecuencia",
+        bargap=0.1  # Espacio entre barras
+    )
+    
+    # Añadimos líneas para valor medio y mediana
+    mean_val = df[selected_column].mean()
+    median_val = df[selected_column].median()
+    
+    fig.add_shape(
+        type="line", line=dict(dash="dash", color="#FF4B4B", width=2),
+        x0=mean_val, x1=mean_val, y0=0, y1=1, 
+        yref="paper"
+    )
+    fig.add_shape(
+        type="line", line=dict(dash="solid", color="#FFD700", width=2),
+        x0=median_val, x1=median_val, y0=0, y1=1, 
+        yref="paper"
+    )
+    
+    # Añadimos anotaciones para explicar las líneas
+    fig.add_annotation(
+        x=mean_val, y=0.98, yref="paper",
+        text=f"Media: {mean_val:.2f}",
+        showarrow=True, arrowhead=1, ax=60, ay=-30,
+        font=dict(color="#FF4B4B")
+    )
+    fig.add_annotation(
+        x=median_val, y=0.90, yref="paper",
+        text=f"Mediana: {median_val:.2f}",
+        showarrow=True, arrowhead=1, ax=-60, ay=-30,
+        font=dict(color="#FFD700")
+    )
+    
     return fig
 
 app.layout = html.Div(

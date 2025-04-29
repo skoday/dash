@@ -445,6 +445,49 @@ def update_plot(selected_column, data):
 
 #app.layout = create_layout()
 
+# Callback 1: llenar dropdown con columnas numéricas
+@app.callback(
+    Output('decade-column-dropdown', 'options'),
+    Input('stored-clean-csv', 'data')
+)
+def update_numeric_column_options(data):
+    if not data:
+        return []
+    df = pd.DataFrame(data)
+    numeric_columns = df.select_dtypes(include='number').columns
+    return [{'label': col, 'value': col} for col in numeric_columns]
+
+# Callback 2: graficar distribución por decenas
+@app.callback(
+    Output('decade-distribution-graph', 'figure'),
+    Input('decade-column-dropdown', 'value'),
+    State('stored-clean-csv', 'data')
+)
+def update_decade_distribution(selected_column, data):
+    if not data or not selected_column:
+        return px.bar(title="No hay datos para mostrar")
+
+    df = pd.DataFrame(data)
+    df = df[[selected_column]].dropna()
+    df['decena'] = (df[selected_column] // 10).astype(int)
+
+    counts = df['decena'].value_counts().sort_index()
+    df_counts = counts.reset_index()
+    df_counts.columns = ['Decena', 'Cantidad']
+    print(df_counts)
+    fig = px.bar(
+        df_counts,
+        x='Decena',
+        y='Cantidad',
+        labels={'Decena': 'Decena (x10)', 'Cantidad': 'Cantidad de valores'},
+        template='plotly_dark',
+        #color='Cantidad',
+        color_continuous_scale='Blues'
+    )
+    fig.update_layout(margin=dict(t=40, b=20, l=10, r=10))
+
+    return fig
+
 app.layout = html.Div(
                         children=[
                             create_layout(),

@@ -17,7 +17,7 @@ import numpy as np
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, use_pages=True, pages_folder="")
 
 # Upload file section
 @app.callback(Output('output-datos', 'children'), Input('upload-data', 'contents'), State('upload-data', 'filename'))
@@ -537,7 +537,7 @@ def update_distribution_visualization(selected_column, data):
     
     return fig
 
-app.layout = html.Div(
+final_layout = html.Div(
                         children=[
                             create_layout(),
                             html.Div(
@@ -556,7 +556,20 @@ app.layout = html.Div(
                         }
                     )
 
+dash.register_page("main_dashboard",
+                   path='/',
+                   layout=final_layout)
+from layoutsecondview import integration_layout
+
+dash.register_page("forecast",
+                   path='/forecast',
+                   layout=integration_layout)
+
+app.layout = html.Div([
+    dash.page_container
+])
+
 
 
 if __name__ == '__main__':
-    app.run_server(host="0.0.0.0", port=8050, debug=True, threaded=True)
+    app.run_server(host="0.0.0.0", port=80, debug=False, threaded=True)

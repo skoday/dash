@@ -19,6 +19,19 @@ import plotly.graph_objects as go
 
 app = dash.Dash(__name__, use_pages=True, pages_folder="")
 
+def create_empty_graph():
+    """Create empty graph for initial display"""
+    fig = go.Figure()
+    fig.update_layout(
+        title='Selecciona un elemento y una estación para mostrar la serie de tiempo',
+        xaxis_title='Fecha y Hora',
+        yaxis_title='Medición',
+        template='plotly_dark',
+        height=500,
+        showlegend=True
+    )
+    return fig
+
 # Upload file section
 @app.callback(Output('output-datos', 'children'), Input('upload-data', 'contents'), State('upload-data', 'filename'))
 def return_filename(contents, filename):
@@ -95,7 +108,7 @@ def days_table(contents):
 )
 def update_graph(selected_day, data):
     if not data or not selected_day:
-        return px.bar(title="No hay datos para mostrar")
+        return create_empty_graph()
 
     df = pd.DataFrame(data)
     timestamp_col = find_timestamp(df.columns)
@@ -141,7 +154,7 @@ def update_graph(selected_day, data):
                prevent_initial_call=True)
 def day_graph_existing_values_data_type(data):
     if not data:
-        return {}, [], [], [], [], [], []
+        return create_empty_graph(), [], [], [], [], [], []
     df =  pd.DataFrame(data)
     columns = df.columns
     null_data = df.isnull().sum()
@@ -404,7 +417,7 @@ def fill_dropdown_options(data):
 )
 def update_plot(selected_column, data):
     if not selected_column or not data:
-        return {}
+        return create_empty_graph()
 
     df = pd.DataFrame(data)
 
@@ -469,7 +482,7 @@ def update_numeric_column_options(data):
 )
 def update_distribution_visualization(selected_column, data):
     if not data or not selected_column:
-        return px.bar(title="No hay datos para mostrar")
+        return create_empty_graph()
 
     df = pd.DataFrame(data)
     df = df[[selected_column]].dropna()
@@ -572,4 +585,4 @@ app.layout = html.Div([
 
 
 if __name__ == '__main__':
-    app.run_server(host="0.0.0.0", port=80, debug=False, threaded=True)
+    app.run_server(host="0.0.0.0", port=8050, debug=False, threaded=True)

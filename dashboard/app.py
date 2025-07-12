@@ -16,6 +16,7 @@ from multiprocessing import Pool, cpu_count
 import numpy as np
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
+from components.navigation import create_navigation_ribbon
 
 app = dash.Dash(__name__, use_pages=True, pages_folder="")
 
@@ -550,38 +551,42 @@ def update_distribution_visualization(selected_column, data):
     
     return fig
 
-final_layout = html.Div(
-                        children=[
-                            create_layout(),
-                            html.Div(
-                                [
-                                    # tus secciones y componentes aquí
-                                ]
-                            )
-                        ],
-                        style={
-                            'backgroundColor': '#121212',
-                            'minHeight': '100vh',
-                            'padding': '0',
-                            'margin': '0',
-                            'color': '#f5f5f5',
-                            'font-family': 'Segoe UI, sans-serif'
-                        }
-                    )
+final_layout = html.Div([
+            create_navigation_ribbon(),  # Add this line
+            html.Div(
+                children=[
+                    create_layout(),
+                    html.Div([
+                        # your existing sections and components
+                    ])
+                ],
+                style={
+                    'padding': '20px',
+                    'margin': '0'
+                }
+            )
+        ], style={
+            'backgroundColor': '#121212',
+            'minHeight': '100vh',
+            'padding': '0',
+            'margin': '0',
+            'color': '#f5f5f5',
+            'font-family': 'Segoe UI, sans-serif'
+        })
 
-dash.register_page("main_dashboard",
+dash.register_page("Dashboard",
                    path='/',
                    layout=final_layout)
 from layoutsecondview import integration_layout
 
-dash.register_page("forecast",
-                   path='/forecast',
+dash.register_page("Rama",
+                   path='/rama',
                    layout=integration_layout)
 
 from layout_db import return_layout
-dash.register_page("Dashboard db operations",
-                   path='/db',
-                   layout=return_layout())
+dash.register_page("Sensor movil datos",
+                   path='/movil',
+                   layout=return_layout)
 
 
 

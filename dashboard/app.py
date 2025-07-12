@@ -16,8 +16,22 @@ from multiprocessing import Pool, cpu_count
 import numpy as np
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
+from components.navigation import create_navigation_ribbon
 
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, use_pages=True, pages_folder="")
+
+def create_empty_graph():
+    """Create empty graph for initial display"""
+    fig = go.Figure()
+    fig.update_layout(
+        title='Selecciona un elemento y una estación para mostrar la serie de tiempo',
+        xaxis_title='Fecha y Hora',
+        yaxis_title='Medición',
+        template='plotly_dark',
+        height=500,
+        showlegend=True
+    )
+    return fig
 
 # Upload file section
 @app.callback(Output('output-datos', 'children'), Input('upload-data', 'contents'), State('upload-data', 'filename'))
@@ -95,7 +109,7 @@ def days_table(contents):
 )
 def update_graph(selected_day, data):
     if not data or not selected_day:
-        return px.bar(title="No hay datos para mostrar")
+        return create_empty_graph()
 
     df = pd.DataFrame(data)
     timestamp_col = find_timestamp(df.columns)
@@ -141,7 +155,7 @@ def update_graph(selected_day, data):
                prevent_initial_call=True)
 def day_graph_existing_values_data_type(data):
     if not data:
-        return {}, [], [], [], [], [], []
+        return create_empty_graph(), [], [], [], [], [], []
     df =  pd.DataFrame(data)
     columns = df.columns
     null_data = df.isnull().sum()
@@ -404,7 +418,7 @@ def fill_dropdown_options(data):
 )
 def update_plot(selected_column, data):
     if not selected_column or not data:
-        return {}
+        return create_empty_graph()
 
     df = pd.DataFrame(data)
 
@@ -469,7 +483,7 @@ def update_numeric_column_options(data):
 )
 def update_distribution_visualization(selected_column, data):
     if not data or not selected_column:
-        return px.bar(title="No hay datos para mostrar")
+        return create_empty_graph()
 
     df = pd.DataFrame(data)
     df = df[[selected_column]].dropna()
@@ -537,26 +551,50 @@ def update_distribution_visualization(selected_column, data):
     
     return fig
 
-app.layout = html.Div(
-                        children=[
-                            create_layout(),
-                            html.Div(
-                                [
-                                    # tus secciones y componentes aquí
-                                ]
-                            )
-                        ],
-                        style={
-                            'backgroundColor': '#121212',
-                            'minHeight': '100vh',
-                            'padding': '0',
-                            'margin': '0',
-                            'color': '#f5f5f5',
-                            'font-family': 'Segoe UI, sans-serif'
-                        }
-                    )
+final_layout = html.Div([
+            create_navigation_ribbon(),  # Add this line
+            html.Div(
+                children=[
+                    create_layout(),
+                    html.Div([
+                        # your existing sections and components
+                    ])
+                ],
+                style={
+                    'padding': '20px',
+                    'margin': '0'
+                }
+            )
+        ], style={
+            'backgroundColor': '#121212',
+            'minHeight': '100vh',
+            'padding': '0',
+            'margin': '0',
+            'color': '#f5f5f5',
+            'font-family': 'Segoe UI, sans-serif'
+        })
+
+dash.register_page("Dashboard",
+                   path='/',
+                   layout=final_layout)
+from layoutsecondview import integration_layout
+
+dash.register_page("Rama",
+                   path='/rama',
+                   layout=integration_layout)
+
+from layout_db import return_layout
+dash.register_page("Sensor movil datos",
+                   path='/movil',
+                   layout=return_layout)
+
+
+
+app.layout = html.Div([
+    dash.page_container
+])
 
 
 
 if __name__ == '__main__':
-    app.run_server(host="0.0.0.0", port=8050, debug=True, threaded=True)
+    app.run_server(host="0.0.0.0", port=8050, debug=False, threaded=True)

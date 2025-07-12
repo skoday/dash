@@ -14,5 +14,4 @@ class Settings(BaseSettings):
     database_name: str
     database_username: str
 
-
 settings = Settings(_env_file='.env')

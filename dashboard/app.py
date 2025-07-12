@@ -578,6 +578,13 @@ dash.register_page("forecast",
                    path='/forecast',
                    layout=integration_layout)
 
+from layout_db import return_layout
+dash.register_page("Dashboard db operations",
+                   path='/db',
+                   layout=return_layout())
+
+
+
 app.layout = html.Div([
     dash.page_container
 ])

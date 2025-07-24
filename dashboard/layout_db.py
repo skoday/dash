@@ -8,8 +8,10 @@ import pandas as pd
 from dash import Input, Output, State, callback, html
 from dash.exceptions import PreventUpdate
 
+
 DB = DBOperations(SessionLocal())
 PASSWORD = settings.password
+
 
 def return_layout():
     return html.Div([
@@ -138,7 +140,7 @@ def return_layout():
                     )
                 ], style={'flex': '1'}),
                 
-                # Password input
+                # Password input for upload
                 html.Div([
                     html.Label(
                         "Contraseña:",
@@ -151,7 +153,7 @@ def return_layout():
                         }
                     ),
                     dcc.Input(
-                        id='password-input',
+                        id='upload-password-input',
                         type='password',
                         placeholder='Ingresa la contraseña',
                         style={
@@ -286,6 +288,35 @@ def return_layout():
                     )
                 ], style={'flex': '2'}),
                 
+                # Password input for download
+                html.Div([
+                    html.Label(
+                        "Contraseña:",
+                        style={
+                            'color': '#f5f5f5',
+                            'font-weight': 'bold',
+                            'margin-bottom': '8px',
+                            'display': 'block',
+                            'font-size': '14px'
+                        }
+                    ),
+                    dcc.Input(
+                        id='download-password-input',
+                        type='password',
+                        placeholder='Ingresa la contraseña',
+                        style={
+                            'width': '100%',
+                            'height': '40px',
+                            'background-color': '#1a1a1a',
+                            'border': '1px solid #2c2c2c',
+                            'border-radius': '5px',
+                            'color': '#f5f5f5',
+                            'padding': '10px',
+                            'font-size': '14px'
+                        }
+                    )
+                ], style={'flex': '1'}),
+                
                 # Refresh campaigns button
                 html.Div([
                     html.Label(
@@ -375,6 +406,7 @@ def return_layout():
     ])
 
 
+
 @callback(
     Output('campaign-dropdown', 'options'),
     Output('trigger-campaigns-load', 'children'),
@@ -400,6 +432,7 @@ def load_campaigns(trigger, refresh_clicks):
     except Exception as e:
         return [{'label': f'Error cargando campañas: {str(e)}', 'value': '', 'disabled': True}], "error"
 
+
 # Callback for CSV upload and database insertion
 @callback(
     Output('upload-status-alert', 'children'),
@@ -407,7 +440,7 @@ def load_campaigns(trigger, refresh_clicks):
     State('csv-upload', 'contents'),
     State('csv-upload', 'filename'),
     State('campaign-name-input', 'value'),
-    State('password-input', 'value')
+    State('upload-password-input', 'value')
 )
 def upload_csv_to_database(n_clicks, contents, filename, campaign_name, password):
     """Handle CSV upload with password validation"""
@@ -471,17 +504,34 @@ def upload_csv_to_database(n_clicks, contents, filename, campaign_name, password
                            'border': '1px solid #f44336', 'border-radius': '5px', 'margin': '5px 0'})
         ])
 
-# Callback for CSV download
+
+# Callback for CSV download with password verification
 @callback(
     Output('download-csv-file', 'data'),
     Output('download-status-alert', 'children'),
     Input('download-button', 'n_clicks'),
-    State('campaign-dropdown', 'value')
+    State('campaign-dropdown', 'value'),
+    State('download-password-input', 'value')
 )
-def download_campaign_csv(n_clicks, selected_campaign):
-    """Download selected campaign data as CSV"""
+def download_campaign_csv(n_clicks, selected_campaign, password):
+    """Download selected campaign data as CSV with password verification"""
     if not n_clicks:
         raise PreventUpdate
+    
+    # Password validation for downloads
+    if not password:
+        return None, html.Div([
+            html.Div("❌ Debes ingresar la contraseña para descargar", 
+                    style={'color': '#f44336', 'padding': '10px', 'background-color': '#1a1a1a', 
+                           'border': '1px solid #f44336', 'border-radius': '5px', 'margin': '5px 0'})
+        ])
+    
+    if password != PASSWORD:
+        return None, html.Div([
+            html.Div("❌ Contraseña incorrecta", 
+                    style={'color': '#f44336', 'padding': '10px', 'background-color': '#1a1a1a', 
+                           'border': '1px solid #f44336', 'border-radius': '5px', 'margin': '5px 0'})
+        ])
     
     if not selected_campaign:
         return None, html.Div([
@@ -527,19 +577,37 @@ def download_campaign_csv(n_clicks, selected_campaign):
                            'border': '1px solid #f44336', 'border-radius': '5px', 'margin': '5px 0'})
         ])
 
-# Callback to clear password field after upload
+
+# Callback to clear password fields after successful operations
 @callback(
-    Output('password-input', 'value'),
+    Output('upload-password-input', 'value'),
+    Output('download-password-input', 'value'),
     Input('upload-status-alert', 'children'),
-    State('password-input', 'value')
+    Input('download-status-alert', 'children'),
+    State('upload-password-input', 'value'),
+    State('download-password-input', 'value')
 )
-def clear_password_on_success(status_alert, current_password):
-    """Clear password field after successful upload for security"""
-    if status_alert and current_password:
-        # Check if the alert shows success (contains ✅)
-        if hasattr(status_alert, 'children') and any('✅' in str(child) for child in status_alert['children']):
-            return ""
-    raise PreventUpdate
+def clear_passwords_on_success(upload_status, download_status, upload_password, download_password):
+    """Clear password fields after successful operations for security"""
+    upload_clear = ""
+    download_clear = ""
+    
+    # Clear upload password on success
+    if upload_status and upload_password:
+        if hasattr(upload_status, 'children') and any('✅' in str(child) for child in upload_status['children']):
+            upload_clear = ""
+        else:
+            upload_clear = upload_password
+    
+    # Clear download password on success
+    if download_status and download_password:
+        if hasattr(download_status, 'children') and any('✅' in str(child) for child in download_status['children']):
+            download_clear = ""
+        else:
+            download_clear = download_password
+    
+    return upload_clear, download_clear
+
 
 # Callback to update campaign dropdown after successful upload
 @callback(

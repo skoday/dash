@@ -5,6 +5,7 @@ import requests
 import pandas as pd
 from datetime import datetime
 from env_config import settings
+from dash import callback_context
 
 RAMA_URL = settings.rama_url  # This only provides an ip:port connection
 
@@ -68,7 +69,7 @@ def integration_layout():
             'margin': '10px 0'
         }),
         
-        # Controls section
+        # Controls section - AQUÍ ESTÁ TODO INTEGRADO
         html.Div([
             html.Div([
                 # Elemento dropdown
@@ -149,7 +150,96 @@ def integration_layout():
                             'box-shadow': '0 2px 6px rgba(30, 136, 229, 0.3)'
                         }
                     )
-                ], style={'flex': '1'})
+                ], style={'flex': '1'}),
+                
+                # ──────────── NUEVOS CAMPOS PARA PREDICCIÓN ────────────
+                # Fecha de entrenamiento
+                html.Div([
+                    html.Label(
+                        "Rango entrenamiento:",
+                        style={
+                            'color': '#f5f5f5',
+                            'font-weight': 'bold',
+                            'margin-bottom': '8px',
+                            'display': 'block',
+                            'font-size': '14px'
+                        }
+                    ),
+                    dcc.DatePickerRange(
+                        id='train-range',
+                        min_date_allowed=datetime(1986, 1, 1),
+                        max_date_allowed=datetime.now(),
+                        start_date=datetime(2023, 1, 1),
+                        end_date=datetime(2023, 1, 31),
+                        display_format='YYYY-MM-DD',
+                        style={
+                            'background-color': '#1a1a1a',
+                            'border': '1px solid #2c2c2c',
+                            'border-radius': '5px',
+                            'color': 'white'
+                        }
+                    )
+                ], style={'flex': '2'}),
+                
+                # Ventana de predicción
+                html.Div([
+                    html.Label(
+                        "Ventana (h):",
+                        style={
+                            'color': '#f5f5f5',
+                            'font-weight': 'bold',
+                            'margin-bottom': '8px',
+                            'display': 'block',
+                            'font-size': '14px'
+                        }
+                    ),
+                    dcc.Input(
+                        id='pred-window',
+                        type='number',
+                        min=1, max=720, step=1,
+                        value=24,
+                        style={
+                            'width': '100%',
+                            'background-color': '#1a1a1a',
+                            'border': '1px solid #2c2c2c',
+                            'border-radius': '5px',
+                            'color': 'white',
+                            'padding': '10px'
+                        }
+                    )
+                ], style={'flex': '1'}),
+                
+                # Botón predecir
+                html.Div([
+                    html.Label(
+                        "Acción predicción:",
+                        style={
+                            'color': '#f5f5f5',
+                            'font-weight': 'bold',
+                            'margin-bottom': '8px',
+                            'display': 'block',
+                            'font-size': '14px'
+                        }
+                    ),
+                    html.Button(
+                        "Predecir",
+                        id="predecir-button",
+                        style={
+                            'background-color': '#e53935',
+                            'color': 'white',
+                            'border': 'none',
+                            'padding': '10px 20px',
+                            'border-radius': '5px',
+                            'cursor': 'pointer',
+                            'font-size': '16px',
+                            'font-weight': 'bold',
+                            'width': '100%',
+                            'box-shadow': '0 2px 6px rgba(229, 57, 53, 0.3)'
+                        }
+                    )
+                ], style={'flex': '1'}),
+                # ──────────── FIN NUEVOS CAMPOS ────────────
+                
             ], style={
                 'display': 'flex',
                 'flexDirection': 'row',
@@ -216,6 +306,7 @@ def integration_layout():
         html.Div(id="trigger-load", style={'display': 'none'})
     ])
 
+
 # Callback to load elementos dropdown
 @callback(
     Output('elemento-dropdown', 'options'),
@@ -236,6 +327,7 @@ def load_elementos(_):
         return [], f"Error de conexión: {str(e)}"
     except Exception as e:
         return [], f"Error: {str(e)}"
+
 
 # Callback to load estaciones dropdown
 @callback(
@@ -258,39 +350,63 @@ def load_estaciones(_):
     except Exception as e:
         return [], f"Error: {str(e)}"
 
-# Callback to update the time series graph
+
 @callback(
     [Output('time-series-graph', 'figure'),
      Output('status-alert', 'children')],
-    [Input('mostrar-button', 'n_clicks')],
+    [Input('mostrar-button', 'n_clicks'),
+     Input('predecir-button', 'n_clicks')],
     [State('elemento-dropdown', 'value'),
-     State('estacion-dropdown', 'value')]
+     State('estacion-dropdown', 'value'),
+     State('train-range', 'start_date'),
+     State('train-range', 'end_date'),
+     State('pred-window', 'value')]
 )
-def update_time_series(n_clicks, elemento_id, estacion_id):
+def update_graph_and_alert(mostrar_clicks, predecir_clicks, elemento_id, estacion_id, 
+                          start_date, end_date, ventana_horas):
+    # Get which button triggered the callback
+    ctx = callback_context
+    
+    # If no button has been clicked yet
+    if not ctx.triggered:
+        return create_empty_graph(), ""
+    
+    # Get the ID of the component that triggered the callback
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    # Route to appropriate function based on which button was clicked
+    if button_id == 'mostrar-button':
+        return handle_mostrar_button(mostrar_clicks, elemento_id, estacion_id)
+    elif button_id == 'predecir-button':
+        return handle_predecir_button(predecir_clicks, elemento_id, estacion_id, 
+                                     start_date, end_date, ventana_horas)
+    
+    return create_empty_graph(), ""
+
+
+def handle_mostrar_button(n_clicks, elemento_id, estacion_id):
+    """Handle the 'Mostrar' button logic"""
     if n_clicks is None or elemento_id is None or estacion_id is None:
         return create_empty_graph(), ""
     
     try:
-        # Fetch time series data
+        # Your existing mostrar logic here
         response = requests.get(
             f"{RAMA_URL}/mediciones/time-series",
             params={'id_estacion': estacion_id, 'id_elemento': elemento_id},
-            timeout=30  # Longer timeout for potentially large datasets
+            timeout=30
         )
         
         if response.status_code == 200:
             data = response.json()
-            #print(data)
             if not data:
                 alert = dbc.Alert("No se encontraron datos para la combinación seleccionada.", 
                                 color="warning", className="mt-3")
                 return create_empty_graph(), alert
             
-            # Convert to DataFrame for easier handling
+            # Convert to DataFrame and process (your existing logic)
             df = pd.DataFrame(data)
             df['datetime'] = pd.to_datetime(df['datetime'])
-            
-            # Filter out invalid measurements (assuming -99.0 means no data)
             df_filtered = df[df['medicion'] != -99.0]
             
             if df_filtered.empty:
@@ -298,75 +414,115 @@ def update_time_series(n_clicks, elemento_id, estacion_id):
                                 color="warning", className="mt-3")
                 return create_empty_graph(), alert
             
-            # Get elemento and estacion info for labels
-            elemento_info = None
-            estacion_info = None
-            
-            try:
-                elementos_response = requests.get(f"{RAMA_URL}/elementos", timeout=10)
-                if elementos_response.status_code == 200:
-                    elementos = elementos_response.json()
-                    elemento_info = next((e for e in elementos if e['id_elemento'] == elemento_id), None)
-            except:
-                pass
-                
-            try:
-                estaciones_response = requests.get(f"{RAMA_URL}/estaciones", timeout=10)
-                if estaciones_response.status_code == 200:
-                    estaciones = estaciones_response.json()
-                    estacion_info = next((e for e in estaciones if e['id_estacion'] == estacion_id), None)
-            except:
-                pass
-            
-            # Create the figure
+            # Create the figure (your existing plotting logic)
             fig = go.Figure()
-            
             fig.add_trace(go.Scatter(
                 x=df_filtered['datetime'],
                 y=df_filtered['medicion'],
                 mode='lines',
-                name=f"{elemento_info['elemento'] if elemento_info else 'Elemento'} - {estacion_info['clave_estacion'] if estacion_info else 'Estación'}",
+                name='Datos Históricos',
                 line=dict(color='#2E86AB', width=2),
                 hovertemplate='<b>Fecha:</b> %{x}<br><b>Medición:</b> %{y}<extra></extra>'
             ))
             
-            # Update layout
-            title = f"Serie de Tiempo - {elemento_info['nombre_elemento'] if elemento_info else 'Elemento'}"
-            if estacion_info:
-                title += f" en {estacion_info['nombre_estacion']}"
-                
-            y_title = f"Medición ({elemento_info['unidad_medicion'] if elemento_info else 'Unidad'})"
-            
             fig.update_layout(
-                title=title,
+                title="Serie de Tiempo - Datos Históricos",
                 xaxis_title='Fecha y Hora',
-                yaxis_title=y_title,
+                yaxis_title='Medición',
                 template='plotly_dark',
                 height=500,
                 showlegend=True,
                 hovermode='x unified'
             )
             
-            # Success alert
-            total_points = len(df_filtered)
-            date_range = f"{df_filtered['datetime'].min().strftime('%Y-%m-%d')} a {df_filtered['datetime'].max().strftime('%Y-%m-%d')}"
-            alert = dbc.Alert(""
-                #f"Datos cargados exitosamente. {total_points:,} mediciones desde {date_range}.", 
-                #color="success", className="mt-3"
-            )
-            
+            alert = dbc.Alert("", color="success", className="mt-3")
             return fig, alert
             
         else:
-            alert = dbc.Alert(f"Error al obtener datos de la serie de tiempo: {response.status_code}", 
+            alert = dbc.Alert(f"Error al obtener datos: {response.status_code}", 
                             color="danger", className="mt-3")
             return create_empty_graph(), alert
             
-    except requests.exceptions.RequestException as e:
-        alert = dbc.Alert(f"Error de conexión con la API: {str(e)}", 
-                        color="danger", className="mt-3")
-        return create_empty_graph(), alert
     except Exception as e:
-        alert = dbc.Alert(f"Error al procesar los datos: {str(e)}", 
-                        color="danger", className="mt-3")
+        alert = dbc.Alert(f"Error: {str(e)}", color="danger", className="mt-3")
         return create_empty_graph(), alert
+
+
+def handle_predecir_button(n_clicks, elemento_id, estacion_id, start_date, end_date, ventana_horas):
+    """Handle the 'Predecir' button logic"""
+    if n_clicks is None:
+        return create_empty_graph(), ""
+    
+    if None in (elemento_id, estacion_id, start_date, end_date, ventana_horas):
+        alerta = dbc.Alert("Completa todos los campos antes de predecir.", 
+                           color="warning", className="mt-3")
+        return create_empty_graph(), alerta
+    
+    try:
+        # Your existing prediction logic here
+        params = {
+            'id_estacion': estacion_id,
+            'id_elemento': elemento_id,
+            'start_date': f"{start_date} 00:00:00",
+            'end_date': f"{end_date} 23:59:59",
+            'prediction_window': ventana_horas
+        }
+        
+        resp = requests.get(f"{RAMA_URL}/mediciones/predict", 
+                            params=params, timeout=600)
+        
+        if resp.status_code != 200:
+            alerta = dbc.Alert(f"Error {resp.status_code} al predecir.", 
+                               color="danger", className="mt-3")
+            return create_empty_graph(), alerta
+        
+        data = resp.json()
+        
+        # Create DataFrames and plot (your existing logic)
+        hist_df = pd.DataFrame(data['historical_data'])
+        hist_df['timestamp'] = pd.to_datetime(hist_df['timestamp'])
+        
+        pred_df = pd.DataFrame(data['predictions'])
+        pred_df['timestamp'] = pd.to_datetime(pred_df['timestamp'])
+        
+        fig = go.Figure()
+        
+        # Historical data
+        fig.add_trace(go.Scatter(
+            x=hist_df['timestamp'], 
+            y=hist_df['actual_value'],
+            mode='lines', 
+            name='Histórico',
+            line=dict(color='#2E86AB', width=2),
+            hovertemplate='<b>Fecha:</b> %{x}<br><b>Histórico:</b> %{y}<extra></extra>'
+        ))
+        
+        # Predictions
+        fig.add_trace(go.Scatter(
+            x=pred_df['timestamp'], 
+            y=pred_df['predicted_value'],
+            mode='lines', 
+            name='Predicción',
+            line=dict(color='#e53935', width=2, dash='dash'),
+            hovertemplate='<b>Fecha:</b> %{x}<br><b>Predicción:</b> %{y}<extra></extra>'
+        ))
+        
+        fig.update_layout(
+            title="Histórico + Predicción LSTM",
+            xaxis_title='Fecha y Hora',
+            yaxis_title='Medición',
+            template='plotly_dark',
+            height=500,
+            showlegend=True,
+            hovermode='x unified'
+        )
+        
+        alerta = dbc.Alert(
+            f"Predicción generada: {len(pred_df)} puntos con ventana de {ventana_horas} horas.",
+            color="success", className="mt-3"
+        )
+        return fig, alerta
+        
+    except Exception as e:
+        alerta = dbc.Alert(f"Error: {e}", color="danger", className="mt-3")
+        return create_empty_graph(), alerta
